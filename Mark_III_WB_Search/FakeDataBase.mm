@@ -14,8 +14,12 @@ int comparator(const void *event1, const void *event2);
 
 // For the simplicity of the task we assume that this function always returns 10000 items
 Event * __strong * fetchEvents(NSDate *startDate, NSDate *endDate) {
-    Event * __strong *eventsBuffer = (Event * __strong *)malloc(sizeof(Event *) * 10000);
-    
+    const size_t length = sizeof(Event *) * 10000;
+    void* buffer = (Event * __strong *)malloc(length);
+    memset(buffer, 0, length);
+
+    Event * __strong *eventsBuffer = (Event * __strong *)buffer;
+
     for (NSUInteger i = 0; i < 10000; i++) {
         NSString *title = randomTitle();
         NSDate *eventStartDate = randomDateInRange(startDate, endDate);
