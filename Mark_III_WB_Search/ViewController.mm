@@ -22,6 +22,7 @@ static const NSInteger startPlusSearchDeltaInYears = 5;
 @property (nonatomic, direct) NSInteger eventCount;
 
 @property (nonatomic, direct) dispatch_queue_t loadingQueue;
+@property (nonatomic, direct) dispatch_group_t loadingGroup;
 
 @property (nonatomic, direct) NSMutableData* filteredIndexes;
 @property (nonatomic, direct) NSInteger filteredIndexesCount;
@@ -91,12 +92,14 @@ static const NSInteger startPlusSearchDeltaInYears = 5;
     self.eventCount = 10000; // TODO: predefined - change to something more useful
     self.filteredIndexesCount = -1;
 
+    self.loadingGroup = dispatch_group_create();
     self.loadingQueue = dispatch_queue_create("com.viewController.loadingQueue", DISPATCH_QUEUE_SERIAL);
     self.threadsCount = NSProcessInfo.processInfo.processorCount / 2;
 
     NSMutableArray* array = [NSMutableArray.alloc initWithCapacity:self.threadsCount];
+    const dispatch_queue_attr_t attributes = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1);
     for (NSUInteger idx = 0; idx < self.threadsCount; idx++) {
-        [array addObject:dispatch_queue_create([NSString stringWithFormat:@"com.viewController.processingQueues.%d", (int)idx].UTF8String, DISPATCH_QUEUE_SERIAL)];
+        [array addObject:dispatch_queue_create([NSString stringWithFormat:@"com.viewController.processingQueues.%d", (int)idx].UTF8String, attributes)];
     }
     self.processingQueues = array;
 
@@ -154,42 +157,55 @@ static const NSInteger startPlusSearchDeltaInYears = 5;
     const NSInteger eventCount = self.eventCount;
     const NSInteger width = eventCount / queuesCount;
 
-    dispatch_group_t group = dispatch_group_create();
     NSMutableArray<NSData*>* result = [NSMutableArray.alloc initWithCapacity:queuesCount];
 
+    __weak typeof(self) weakSelf = self;
+
     for (NSUInteger idx = 0; idx < queuesCount; idx++) {
-        dispatch_group_enter(group);
+        dispatch_group_enter(self.loadingGroup);
 
         NSMutableData* chunk = [NSMutableData new];
         [result addObject:chunk];
 
         dispatch_async(self.processingQueues[idx], ^{
+            __strong typeof(self) strongSelf = weakSelf;
+
             const NSInteger location = idx * width;
             const NSRange range = NSMakeRange(location, (idx + 1 < queuesCount) ? width : eventCount - location);
             [self filterEventsInRange:range searchText:text resultIndexes:chunk];
-            dispatch_group_leave(group);
+
+            dispatch_group_leave(strongSelf.loadingGroup);
         });
     }
 
-    dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+    dispatch_async(self.loadingQueue, ^{
+        __strong typeof(self) strongSelf = weakSelf;
+        dispatch_group_wait(strongSelf.loadingGroup, DISPATCH_TIME_FOREVER);
 
-    NSUInteger index = 0;
-    NSInteger* indexesArray = (NSInteger*)self.filteredIndexes.mutableBytes;
+        NSUInteger index = 0;
+        NSInteger* indexesArray = (NSInteger*)strongSelf.filteredIndexes.mutableBytes;
 
-    for (NSInteger idx = 0; idx < result.count; idx++) {
-        NSData* subIndexes = [result objectAtIndex:idx];
-        const NSUInteger length = [subIndexes length];
+        for (NSInteger idx = 0; idx < result.count; idx++) {
+            NSData* subIndexes = [result objectAtIndex:idx];
+            const NSUInteger length = [subIndexes length];
 
-        if (0 == length) { continue; }
+            if (0 == length) { continue; }
 
-        memcpy(&indexesArray[index], subIndexes.bytes, length);
-        index += length / sizeof(NSInteger);
-    }
+            const NSUInteger startIndex = index;
+            index += length / sizeof(NSInteger);
 
-    self.filteredIndexesCount = index;
-    [self.tableView reloadData];
+            dispatch_barrier_async(dispatch_get_main_queue(), ^{
+                memcpy(&indexesArray[startIndex], subIndexes.bytes, length);
+                strongSelf.filteredIndexesCount = index;
+            });
+        }
 
-    NSLog(@"self.filteredIndexesCount = %d", (int)self.filteredIndexesCount);
+        dispatch_barrier_async(dispatch_get_main_queue(), ^{
+            strongSelf.filteredIndexesCount = index;
+            [strongSelf.tableView reloadData];
+            NSLog(@"self.filteredIndexesCount = %d", (int)self.filteredIndexesCount);
+        });
+    });
 }
 
 @end
