@@ -7,7 +7,12 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController <UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate>
+@class Event;
 
+@interface ViewController : UIViewController <UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate>
+@end
+
+@interface ViewController (TmpUtility)
+- (void)performSearchText:(NSString* )text events:(Event* __strong*)events eventsCount:(NSInteger)eventsCount completion: (void (^)(NSInteger count, BOOL finished, const void* partialBytes, NSUInteger length))completion;
 @end
 
