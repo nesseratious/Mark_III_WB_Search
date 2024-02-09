@@ -64,7 +64,7 @@
     [resultIndexes setLength:sizeof(NSInteger) * index];
 }
 
-+ (void)performSearchText:(NSString* )text events:(Event* __strong*)events eventsCount:(NSInteger)eventsCount environment:(id<SearchEnvironment>)environment completion: (TextSearchCompletion)completion {
++ (void)performSearchText:(NSString* )text events:(Event* __strong*)events eventsCount:(NSInteger)eventsCount environment:(id<SearchEnvironment>)environment completion:(TextSearchCompletion)completion {
     if (text.length == 0) {
         completion(-1, TRUE, NULL, 0);
         return;

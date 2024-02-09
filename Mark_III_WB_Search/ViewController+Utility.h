@@ -17,7 +17,7 @@ typedef void (^TextSearchCompletion)(NSInteger count, BOOL finished, const void*
 @interface ViewController (Utility)
 + (void)getStartRangeDate:(NSDate**)start endRangeDate:(NSDate**)end forDate:(NSDate*)date minusYearsDelta:(NSInteger)minusYearsDelta plusYearsDelta:(NSInteger)plusYearsDelta;
 + (void)filterEventsInRange:(NSRange)range searchText:(NSString*)text events:(Event* __strong*)events resultIndexes:(NSMutableData*)resultIndexes;
-+ (void)performSearchText:(NSString* )text events:(Event* __strong*)events eventsCount:(NSInteger)eventsCount environment:(id<SearchEnvironment>)environment completion: (TextSearchCompletion)completion;
++ (void)performSearchText:(NSString* )text events:(Event* __strong*)events eventsCount:(NSInteger)eventsCount environment:(id<SearchEnvironment>)environment completion:(TextSearchCompletion)completion;
 @end
 
 static const NSInteger searchDeltaInYears = 10;

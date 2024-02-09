@@ -13,6 +13,7 @@
 @class Event;
 
 // For the simplicity of the task we assume that this function always returns 10000 items
+FOUNDATION_EXPORT
 Event * __strong * fetchEvents(NSDate *startDate, NSDate *endDate);
 
 #endif /* FakeDataBase_h */
