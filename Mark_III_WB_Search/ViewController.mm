@@ -21,13 +21,13 @@ static const NSInteger startPlusSearchDeltaInYears = 5;
 @property (nonatomic, direct) Event * __strong * events;
 @property (nonatomic, direct) NSInteger eventCount;
 
-@property (nonatomic) dispatch_queue_t loadingQueue;
+@property (nonatomic, direct) dispatch_queue_t loadingQueue;
 
-@property (nonatomic) NSMutableData* filteredIndexes;
-@property (nonatomic) NSInteger filteredIndexesCount;
+@property (nonatomic, direct) NSMutableData* filteredIndexes;
+@property (nonatomic, direct) NSInteger filteredIndexesCount;
 
-@property (nonatomic) NSArray<dispatch_queue_t>* processingQueues;
-@property (nonatomic) NSUInteger threadsCount;
+@property (nonatomic, direct) NSArray<dispatch_queue_t>* processingQueues;
+@property (nonatomic, direct) NSUInteger threadsCount;
 
 @end
 
@@ -151,19 +151,22 @@ static const NSInteger startPlusSearchDeltaInYears = 5;
     }
 
     const NSUInteger queuesCount = self.processingQueues.count;
-    const NSInteger width = self.eventCount / queuesCount;
+    const NSInteger eventCount = self.eventCount;
+    const NSInteger width = eventCount / queuesCount;
 
     dispatch_group_t group = dispatch_group_create();
     NSMutableArray<NSData*>* result = [NSMutableArray.alloc initWithCapacity:queuesCount];
 
-    for (NSUInteger idx = 0; idx < queuesCount - 1; idx++) {
+    for (NSUInteger idx = 0; idx < queuesCount; idx++) {
         dispatch_group_enter(group);
 
         NSMutableData* chunk = [NSMutableData new];
         [result addObject:chunk];
 
         dispatch_async(self.processingQueues[idx], ^{
-            [self filterEventsInRange:NSMakeRange(idx * width, width) searchText:text resultIndexes:chunk];
+            const NSInteger location = idx * width;
+            const NSRange range = NSMakeRange(location, (idx + 1 < queuesCount) ? width : eventCount - location);
+            [self filterEventsInRange:range searchText:text resultIndexes:chunk];
             dispatch_group_leave(group);
         });
     }
