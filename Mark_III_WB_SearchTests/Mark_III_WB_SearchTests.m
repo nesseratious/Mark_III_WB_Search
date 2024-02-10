@@ -11,9 +11,9 @@
 #import "ViewController+Utility.h"
 #import "FakeDataBase.h"
 #import "SimpleSearchEnvironment.h"
+#import "ConcurrentSearchEnvironment.h"
 
 @interface Mark_III_WB_SearchTests : XCTestCase
-@property (nonatomic, direct) NSData* bigEventsData;
 @end
 
 @implementation Mark_III_WB_SearchTests
@@ -21,7 +21,9 @@
 const NSUInteger duplicationCount = 200;
 const NSUInteger baseEventsCount = 10000;
 
-- (void)setUp {
+static NSData* bigEventsData = nil;
+
++ (void)setUp {
     NSDate* startDate = nil;
     NSDate* endDate = nil;
     [ViewController getStartRangeDate:&startDate endRangeDate:&endDate forDate:[NSDate new] minusYearsDelta:0 plusYearsDelta:10];
@@ -34,11 +36,11 @@ const NSUInteger baseEventsCount = 10000;
         memcpy(baseAddress + idx * baseEventsCount * sizeof(Event*), (void*)baseEvents, baseEventsCount * sizeof(Event*));
     }
 
-    self.bigEventsData = bigResult;
+    bigEventsData = bigResult;
 }
 
-- (void)tearDown {
-    self.bigEventsData = nil;
++ (void)tearDown {
+    bigEventsData = nil;
 }
 
 - (void)testPerformanceSimple {
@@ -46,8 +48,13 @@ const NSUInteger baseEventsCount = 10000;
     [self basePerformanceCheckingWithEnvironment:environment];
 }
 
+- (void)testPerformanceConcurrent {
+    id<SearchEnvironment> environment = [ConcurrentSearchEnvironment new];
+    [self basePerformanceCheckingWithEnvironment:environment];
+}
+
 - (void)basePerformanceCheckingWithEnvironment:(id<SearchEnvironment>)environment {
-    const void* baseAddress = self.bigEventsData.bytes;
+    const void* baseAddress = bigEventsData.bytes;
     NSString* sampleText = [((Event* __strong*)baseAddress)[0].title componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].firstObject;
 
     [self measureBlock:^{
