@@ -12,21 +12,16 @@
 #import <list>
 
 @interface ViewController () <SearchEnvironment>
-
 @property (nonatomic, direct) UITableView *tableView;
 @property (nonatomic, direct) UISearchBar *searchBar;
 @property (nonatomic, direct) Event * __strong * events;
 @property (nonatomic, direct) NSInteger eventCount;
-
-@property (nonatomic, direct) dispatch_queue_t loadingQueue;
 
 @property (nonatomic, direct) NSMutableData* filteredIndexes;
 @property (nonatomic, direct) NSInteger filteredIndexesCount;
 
 @property (nonatomic, direct) NSArray<dispatch_queue_t>* processingQueues;
 @property (nonatomic, direct) NSUInteger currentProcessingQueue;
-@property (nonatomic, direct) NSUInteger threadsCount;
-
 @end
 
 @implementation ViewController
@@ -38,12 +33,12 @@
     self.eventCount = 10000; // TODO: predefined - change to something more useful
     self.filteredIndexesCount = -1;
 
-    self.loadingQueue = dispatch_queue_create("com.viewController.loadingQueue", DISPATCH_QUEUE_SERIAL);
-    self.threadsCount = NSProcessInfo.processInfo.processorCount / 2;
+    _reportingQueue = dispatch_queue_create("com.viewController.loadingQueue", DISPATCH_QUEUE_SERIAL);
 
-    NSMutableArray* array = [NSMutableArray.alloc initWithCapacity:self.threadsCount];
+    const NSUInteger threadsCount = NSProcessInfo.processInfo.processorCount / 2;
+    NSMutableArray* array = [NSMutableArray.alloc initWithCapacity:threadsCount];
     const dispatch_queue_attr_t attributes = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1);
-    for (NSUInteger idx = 0; idx < self.threadsCount; idx++) {
+    for (NSUInteger idx = 0; idx < threadsCount; idx++) {
         [array addObject:dispatch_queue_create([NSString stringWithFormat:@"com.viewController.processingQueues.%d", (int)idx].UTF8String, attributes)];
     }
     self.processingQueues = array;
@@ -96,7 +91,7 @@
     __weak typeof(self) weakSelf = self;
     [ViewController performSearchText:text events:self.events eventsCount:self.eventCount environment:self completion:^(NSInteger count, BOOL finished, const void *partialBytes, NSUInteger length) {
         __strong typeof(self) strongSelf = weakSelf;
-        dispatch_barrier_async(dispatch_get_main_queue(), ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
             if (finished) {
                 strongSelf.filteredIndexesCount = count;
                 [strongSelf.tableView reloadData];
@@ -118,10 +113,11 @@
     return result;
 }
 
-@synthesize reportingQueue;
+@synthesize reportingQueue = _reportingQueue;
+@synthesize processingItemsCount = _processingItemsCount;
 
-- (dispatch_queue_t)reportingQueue {
-    return self.loadingQueue;
+- (NSInteger)processingItemsCount {
+    return 2000;
 }
 
 @end

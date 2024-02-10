@@ -6,11 +6,13 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "ViewController.h"
 
 typedef void (^TextSearchCompletion)(NSInteger count, BOOL finished, const void* partialBytes, NSUInteger length);
 
 @protocol SearchEnvironment
-@property (nonatomic) dispatch_queue_t reportingQueue;
+@property (nonatomic, readonly) NSInteger processingItemsCount;
+@property (nonatomic, readonly) dispatch_queue_t reportingQueue;
 - (dispatch_queue_t)nextProcessingQueue;
 @end
 

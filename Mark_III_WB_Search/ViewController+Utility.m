@@ -70,21 +70,21 @@
         return;
     }
 
-    const NSUInteger queuesCount = NSProcessInfo.processInfo.processorCount;
-    const NSInteger width = eventsCount / queuesCount;
+    const NSInteger processingItemsCount = MIN(environment.processingItemsCount, eventsCount);
+    const NSUInteger rangesCount = (eventsCount + processingItemsCount - 1) / processingItemsCount;
 
-    NSMutableArray<NSData*>* result = [NSMutableArray.alloc initWithCapacity:queuesCount];
+    NSMutableArray<NSData*>* result = [NSMutableArray.alloc initWithCapacity:rangesCount];
 
     dispatch_group_t group = dispatch_group_create();
-    for (NSUInteger idx = 0; idx < queuesCount; idx++) {
+    for (NSUInteger idx = 0; idx < rangesCount; idx++) {
         dispatch_group_enter(group);
 
         NSMutableData* chunk = [NSMutableData new];
         [result addObject:chunk];
 
         dispatch_async(environment.nextProcessingQueue, ^{
-            const NSInteger location = idx * width;
-            const NSRange range = NSMakeRange(location, (idx + 1 < queuesCount) ? width : eventsCount - location);
+            const NSInteger location = idx * processingItemsCount;
+            const NSRange range = NSMakeRange(location, (idx + 1 < rangesCount) ? processingItemsCount : eventsCount - location);
             [ViewController filterEventsInRange:range searchText:text events:events resultIndexes:chunk];
 
             dispatch_group_leave(group);
