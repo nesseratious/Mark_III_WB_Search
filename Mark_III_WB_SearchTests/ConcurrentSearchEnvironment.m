@@ -24,7 +24,7 @@
         return nil;
 
     _processingItemsCount = 2500;
-    _reportingQueue = dispatch_queue_create("com.mark_III_WB_SearchTests.loadingQueue", DISPATCH_QUEUE_SERIAL);
+    _reportingQueue = dispatch_queue_create("com.mark_III_WB_SearchTests.reportingQueue", DISPATCH_QUEUE_SERIAL);
 
     const dispatch_queue_attr_t concurrentAttributes = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_CONCURRENT, QOS_CLASS_USER_INITIATED, -1);
     self.concurrentQueue = dispatch_queue_create("com.mark_III_WB_SearchTests.concurrentQueue", concurrentAttributes);

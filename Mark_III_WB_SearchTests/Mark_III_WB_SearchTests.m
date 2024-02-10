@@ -12,6 +12,7 @@
 #import "FakeDataBase.h"
 #import "SimpleSearchEnvironment.h"
 #import "ConcurrentSearchEnvironment.h"
+#import "GlobalSearchEnvironment.h"
 
 @interface Mark_III_WB_SearchTests : XCTestCase
 @end
@@ -50,6 +51,11 @@ static NSData* bigEventsData = nil;
 
 - (void)testPerformanceConcurrent {
     id<SearchEnvironment> environment = [ConcurrentSearchEnvironment new];
+    [self basePerformanceCheckingWithEnvironment:environment];
+}
+
+- (void)testPerformanceGlobal {
+    id<SearchEnvironment> environment = [GlobalSearchEnvironment new];
     [self basePerformanceCheckingWithEnvironment:environment];
 }
 

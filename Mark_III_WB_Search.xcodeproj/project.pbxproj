@@ -21,6 +21,7 @@
 		8B04428A2B76CF9800EB948C /* FakeDataBase.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5A3898F92B74029B00CA2AB4 /* FakeDataBase.mm */; };
 		8B04428B2B76CFC800EB948C /* Event.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5A3898F72B7400A400CA2AB4 /* Event.mm */; };
 		8B04428E2B76DA1600EB948C /* ViewController+Utility.m in Sources */ = {isa = PBXBuildFile; fileRef = 8B04428D2B76DA1600EB948C /* ViewController+Utility.m */; };
+		8B0E08AB2B7806CD00631736 /* GlobalSearchEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = 8B0E08AA2B7806CD00631736 /* GlobalSearchEnvironment.m */; };
 		8B7A9D072B77800400D6EADE /* SimpleSearchEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = 8B7A9D062B77800400D6EADE /* SimpleSearchEnvironment.m */; };
 		8B7A9D0A2B7787BF00D6EADE /* ConcurrentSearchEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = 8B7A9D092B7787BF00D6EADE /* ConcurrentSearchEnvironment.m */; };
 /* End PBXBuildFile section */
@@ -57,6 +58,8 @@
 		8B0442822B76CA5C00EB948C /* Mark_III_WB_SearchTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Mark_III_WB_SearchTests.m; sourceTree = "<group>"; };
 		8B04428C2B76DA1600EB948C /* ViewController+Utility.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ViewController+Utility.h"; sourceTree = "<group>"; };
 		8B04428D2B76DA1600EB948C /* ViewController+Utility.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ViewController+Utility.m"; sourceTree = "<group>"; };
+		8B0E08A92B7806CD00631736 /* GlobalSearchEnvironment.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GlobalSearchEnvironment.h; sourceTree = "<group>"; };
+		8B0E08AA2B7806CD00631736 /* GlobalSearchEnvironment.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GlobalSearchEnvironment.m; sourceTree = "<group>"; };
 		8B7A9D052B77800400D6EADE /* SimpleSearchEnvironment.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SimpleSearchEnvironment.h; sourceTree = "<group>"; };
 		8B7A9D062B77800400D6EADE /* SimpleSearchEnvironment.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SimpleSearchEnvironment.m; sourceTree = "<group>"; };
 		8B7A9D082B7787BF00D6EADE /* ConcurrentSearchEnvironment.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ConcurrentSearchEnvironment.h; sourceTree = "<group>"; };
@@ -132,6 +135,8 @@
 				8B7A9D062B77800400D6EADE /* SimpleSearchEnvironment.m */,
 				8B7A9D082B7787BF00D6EADE /* ConcurrentSearchEnvironment.h */,
 				8B7A9D092B7787BF00D6EADE /* ConcurrentSearchEnvironment.m */,
+				8B0E08A92B7806CD00631736 /* GlobalSearchEnvironment.h */,
+				8B0E08AA2B7806CD00631736 /* GlobalSearchEnvironment.m */,
 			);
 			path = Mark_III_WB_SearchTests;
 			sourceTree = "<group>";
@@ -253,6 +258,7 @@
 			files = (
 				8B04428B2B76CFC800EB948C /* Event.mm in Sources */,
 				8B7A9D0A2B7787BF00D6EADE /* ConcurrentSearchEnvironment.m in Sources */,
+				8B0E08AB2B7806CD00631736 /* GlobalSearchEnvironment.m in Sources */,
 				8B7A9D072B77800400D6EADE /* SimpleSearchEnvironment.m in Sources */,
 				8B0442832B76CA5C00EB948C /* Mark_III_WB_SearchTests.m in Sources */,
 				8B04428A2B76CF9800EB948C /* FakeDataBase.mm in Sources */,

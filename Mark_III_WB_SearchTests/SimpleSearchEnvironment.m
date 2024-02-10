@@ -23,7 +23,7 @@
         return nil;
 
     _processingItemsCount = 2500;
-    _reportingQueue = dispatch_queue_create("com.mark_III_WB_SearchTests.loadingQueue", DISPATCH_QUEUE_SERIAL);
+    _reportingQueue = dispatch_queue_create("com.mark_III_WB_SearchTests.reportingQueue", DISPATCH_QUEUE_SERIAL);
 
     const NSUInteger queuesCount = NSProcessInfo.processInfo.processorCount;
 
