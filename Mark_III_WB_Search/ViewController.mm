@@ -89,17 +89,20 @@
     NSInteger* indexesArray = (NSInteger*)self.filteredIndexes.mutableBytes;
 
     __weak typeof(self) weakSelf = self;
-    [ViewController performSearchText:text events:self.events eventsCount:self.eventCount environment:self completion:^(NSInteger count, BOOL finished, const void *partialBytes, NSUInteger length) {
+    [ViewController performSearchText:text definingDate:nil events:self.events eventsCount:self.eventCount environment:self completion:^(CompletionResult result) {
         __strong typeof(self) strongSelf = weakSelf;
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (finished) {
-                strongSelf.filteredIndexesCount = count;
-                [strongSelf.tableView reloadData];
-                NSLog(@"self.filteredIndexesCount = %d", (int)strongSelf.filteredIndexesCount);
-            } else {
-                memcpy(&indexesArray[startIndex], partialBytes, length);
-                strongSelf.filteredIndexesCount = count;
-                startIndex = count;
+            switch (result.stage) {
+                case inProgress:
+                    memcpy(&indexesArray[startIndex], result.info.partial.bytes, result.info.partial.bytesSize);
+                    strongSelf.filteredIndexesCount = result.info.partial.count;
+                    startIndex = result.info.partial.count;
+                    break;
+                case completed:
+                    strongSelf.filteredIndexesCount = result.info.final.count;
+                    [strongSelf.tableView reloadData];
+                    NSLog(@"self.filteredIndexesCount = %d", (int)strongSelf.filteredIndexesCount);
+                    break;
             }
         });
     }];

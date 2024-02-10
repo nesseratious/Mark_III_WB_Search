@@ -11,7 +11,7 @@
 
 @implementation ViewController (Utility)
 
-+ (void)getStartRangeDate:(NSDate**)start endRangeDate:(NSDate**)end forDate:(NSDate*)date minusYearsDelta:(NSInteger)minusYearsDelta plusYearsDelta:(NSInteger)plusYearsDelta {
++ (void)getStartRangeDate:(NSDate* _Nullable*_Nullable)start endRangeDate:(NSDate* _Nullable* _Nullable)end forDate:(nonnull NSDate*)date minusYearsDelta:(NSInteger)minusYearsDelta plusYearsDelta:(NSInteger)plusYearsDelta {
     NSCalendar* calendar = [NSCalendar currentCalendar];
     NSDateComponents* components = [calendar components:NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay | NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond fromDate:date];
 
@@ -41,14 +41,23 @@
     }
 }
 
-+ (void)filterEventsInRange:(NSRange)range searchText:(NSString*)text events:(Event* __strong*)events resultIndexes:(NSMutableData*)resultIndexes {
+typedef struct _ResultIndexes {
+    NSInteger nearestIndex;
+    NSTimeInterval absTimeDelta;
+    NSInteger allIndexes[1];
+} ResultIndexes;
+
++ (void)filterEventsInRange:(NSRange)range searchText:(nonnull NSString*)text definingInterval:(NSTimeInterval)definingInterval events:(Event* _Nonnull __strong* _Nonnull)events resultIndexes:(nonnull NSMutableData*)resultIndexes {
     if (0 == range.length) { return; }
     if (NULL == events) { return; }
 
-    [resultIndexes setLength:sizeof(NSInteger) * range.length];
+    [resultIndexes setLength:offsetof(ResultIndexes, allIndexes[0]) + sizeof(NSInteger) * range.length];
+
+    NSTimeInterval absDelta = DBL_MAX;
+    NSInteger nearestIndex = -1;
 
     NSUInteger index = 0;
-    NSInteger* indexesArray = (NSInteger*)resultIndexes.mutableBytes;
+    ResultIndexes* indexesArray = (ResultIndexes*)resultIndexes.mutableBytes;
 
     for (NSInteger idx = 0; idx < range.length; idx++) {
         const NSInteger eventIdx = range.location + idx;
@@ -57,18 +66,28 @@
         const NSRange substrRange = [event.title rangeOfString:text options:NSCaseInsensitiveSearch];
         if (0 == substrRange.length) { continue; }
 
-        indexesArray[index] = eventIdx;
+        const NSTimeInterval delta = fabs(event.startDate.timeIntervalSinceReferenceDate - definingInterval);
+        if (delta < absDelta) {
+            nearestIndex = index;
+            absDelta = delta;
+        }
+
+        (*indexesArray).allIndexes[index] = eventIdx;
         index++;
     }
 
-    [resultIndexes setLength:sizeof(NSInteger) * index];
+    (*indexesArray).nearestIndex = nearestIndex;
+    (*indexesArray).absTimeDelta = absDelta;
+    [resultIndexes setLength:offsetof(ResultIndexes, allIndexes[0]) + sizeof(NSInteger) * index];
 }
 
-+ (void)performSearchText:(NSString* )text events:(Event* __strong*)events eventsCount:(NSInteger)eventsCount environment:(id<SearchEnvironment>)environment completion:(TextSearchCompletion)completion {
++ (void)performSearchText:(nonnull NSString* )text definingDate:(nullable NSDate*)definingDate events:(Event* _Nonnull  __strong* _Nonnull)events eventsCount:(NSInteger)eventsCount environment:(nonnull id<SearchEnvironment>)environment completion:(nonnull TextSearchCompletion)completion {
     if (text.length == 0) {
-        completion(-1, TRUE, NULL, 0);
+        completion(MakeCompletionResultFinal(-1, -1, -1.0));
         return;
     }
+
+    const NSTimeInterval definingTimeInterval = ((nil != definingDate) ? definingDate : [NSDate new]).timeIntervalSinceReferenceDate;
 
     const NSInteger processingItemsCount = MIN(environment.processingItemsCount, eventsCount);
     const NSUInteger rangesCount = (eventsCount + processingItemsCount - 1) / processingItemsCount;
@@ -85,7 +104,7 @@
         dispatch_async(environment.nextProcessingQueue, ^{
             const NSInteger location = idx * processingItemsCount;
             const NSRange range = NSMakeRange(location, (idx + 1 < rangesCount) ? processingItemsCount : eventsCount - location);
-            [ViewController filterEventsInRange:range searchText:text events:events resultIndexes:chunk];
+            [ViewController filterEventsInRange:range searchText:text definingInterval:definingTimeInterval events:events resultIndexes:chunk];
 
             dispatch_group_leave(group);
         });
@@ -95,18 +114,27 @@
         dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
 
         NSUInteger index = 0;
+        NSInteger nearestEventIndex = -1;
+        NSTimeInterval nearestDelta = DBL_MAX;
 
         for (NSInteger idx = 0; idx < result.count; idx++) {
             NSData* subIndexes = [result objectAtIndex:idx];
-            const NSUInteger length = [subIndexes length];
+            const NSUInteger length = subIndexes.length - offsetof(ResultIndexes, allIndexes[0]);
 
             if (0 == length) { continue; }
 
+            ResultIndexes const* resultIndexes = (ResultIndexes const*)subIndexes.bytes;
+
+            if ((*resultIndexes).absTimeDelta < nearestDelta) {
+                nearestDelta = (*resultIndexes).absTimeDelta;
+                nearestEventIndex = index + (*resultIndexes).nearestIndex;
+            }
+
             index += length / sizeof(NSInteger);
-            completion(index, FALSE, subIndexes.bytes, length);
+            completion(MakeCompletionResultPartial(index, (*resultIndexes).allIndexes, length));
         }
 
-        completion(index, TRUE, NULL, 0);
+        completion(MakeCompletionResultFinal(index, nearestEventIndex, nearestDelta));
     });
 }
 

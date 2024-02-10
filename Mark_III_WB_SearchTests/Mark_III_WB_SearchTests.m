@@ -23,6 +23,7 @@ const NSUInteger duplicationCount = 200;
 const NSUInteger baseEventsCount = 10000;
 
 static NSData* bigEventsData = nil;
+static NSDate* definingDate = nil;
 
 + (void)setUp {
     NSDate* startDate = nil;
@@ -38,6 +39,7 @@ static NSData* bigEventsData = nil;
     }
 
     bigEventsData = bigResult;
+    definingDate = NSDate.date;
 }
 
 + (void)tearDown {
@@ -65,20 +67,28 @@ static NSData* bigEventsData = nil;
 
     [self measureBlock:^{
         __block NSInteger finalCount = 0;
+        __block NSInteger nearestEventIndex = -1;
+        __block NSTimeInterval nearestAbsTimeDelta = DBL_MAX;
+
         XCTestExpectation* expectation = [XCTestExpectation.alloc initWithDescription:@"Waiting"];
-        [ViewController performSearchText:sampleText events:(Event* __strong*)baseAddress eventsCount:baseEventsCount * duplicationCount environment:environment completion:^(NSInteger count, BOOL finished, const void *partialBytes, NSUInteger length) {
-            if (!finished)
+        [ViewController performSearchText:sampleText definingDate:definingDate events:(Event* __strong*)baseAddress eventsCount:baseEventsCount * duplicationCount environment:environment completion:^(CompletionResult result) {
+            if (completed != result.stage)
                 return;
 
-            finalCount = count;
+            finalCount = result.info.final.count;
+            nearestEventIndex = result.info.final.nearestEventIndex;
+            nearestAbsTimeDelta = result.info.final.nearestAbsTimeDelta;
+
             [expectation fulfill];
         }];
 
         [self waitForExpectations:@[expectation]];
-        NSLog(@"Items count: %d", (int)finalCount);
+        NSLog(@"Items count: %d; nearest event index: %d (time abs delta is %f)", (int)finalCount, (int)nearestEventIndex, (0 < nearestEventIndex) ? nearestAbsTimeDelta : -1.0);
 
         XCTAssertNotEqual(finalCount, 0);
         XCTAssertEqual(finalCount % duplicationCount, 0);
+
+        XCTAssertNotEqual(nearestEventIndex, -1);
     }];
 }
 
