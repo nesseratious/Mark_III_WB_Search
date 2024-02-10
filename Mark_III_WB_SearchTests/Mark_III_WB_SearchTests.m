@@ -89,6 +89,8 @@ static NSDate* definingDate = nil;
         XCTAssertEqual(finalCount % duplicationCount, 0);
 
         XCTAssertNotEqual(nearestEventIndex, -1);
+        XCTAssertGreaterThanOrEqual(nearestEventIndex, 0);
+        XCTAssertLessThan(nearestEventIndex, finalCount);
     }];
 }
 

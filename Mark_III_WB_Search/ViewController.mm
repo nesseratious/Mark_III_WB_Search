@@ -19,9 +19,12 @@
 
 @property (nonatomic, direct) NSMutableData* filteredIndexes;
 @property (nonatomic, direct) NSInteger filteredIndexesCount;
+@property (nonatomic, direct) NSInteger highlightEventIndex;
 
 @property (nonatomic, direct) NSArray<dispatch_queue_t>* processingQueues;
 @property (nonatomic, direct) NSUInteger currentProcessingQueue;
+
+@property (nonatomic, direct) NSString* latestSearchText;
 @end
 
 @implementation ViewController
@@ -32,6 +35,7 @@
     // init like
     self.eventCount = 10000; // TODO: predefined - change to something more useful
     self.filteredIndexesCount = -1;
+    self.highlightEventIndex = -1;
 
     _reportingQueue = dispatch_queue_create("com.viewController.loadingQueue", DISPATCH_QUEUE_SERIAL);
 
@@ -80,13 +84,17 @@
 }
 
 - (void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
-    [NSObject cancelPreviousPerformRequestsWithTarget:self];
-    [self performSelector:@selector(performSearchText:) withObject:searchText afterDelay:1.5];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(performSearchText:) object:self.latestSearchText];
+
+    self.latestSearchText = searchText;
+    [self performSelector:@selector(performSearchText:) withObject:self.latestSearchText afterDelay:1.5];
 }
 
 - (void)performSearchText:(NSString* )text {
     __block NSInteger startIndex = 0;
     NSInteger* indexesArray = (NSInteger*)self.filteredIndexes.mutableBytes;
+
+    self.highlightEventIndex = -1;
 
     __weak typeof(self) weakSelf = self;
     [ViewController performSearchText:text definingDate:nil events:self.events eventsCount:self.eventCount environment:self completion:^(CompletionResult result) {
@@ -102,10 +110,26 @@
                     strongSelf.filteredIndexesCount = result.info.final.count;
                     [strongSelf.tableView reloadData];
                     NSLog(@"self.filteredIndexesCount = %d", (int)strongSelf.filteredIndexesCount);
+
+                    if (-1 == strongSelf.filteredIndexesCount)
+                        break;
+
+                    strongSelf.highlightEventIndex = result.info.final.nearestEventIndex;
+
+                    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(performEventHighlighting) object:nil];
+                    [self performSelectorOnMainThread:@selector(performEventHighlighting) withObject:nil waitUntilDone:NO modes:@[NSRunLoopCommonModes]];
                     break;
             }
         });
     }];
+}
+
+- (void)performEventHighlighting {
+    if (-1 == self.highlightEventIndex || self.highlightEventIndex >= self.filteredIndexesCount)
+        return;
+
+    [self.tableView deselectRowAtIndexPath:self.tableView.indexPathForSelectedRow animated:YES];
+    [self.tableView selectRowAtIndexPath:[NSIndexPath indexPathForRow:self.highlightEventIndex inSection:0] animated:YES scrollPosition:UITableViewScrollPositionMiddle];
 }
 
 // MARK: ### SearchEnvironment ###
