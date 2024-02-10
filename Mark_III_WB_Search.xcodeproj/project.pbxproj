@@ -24,6 +24,7 @@
 		8B0E08AB2B7806CD00631736 /* GlobalSearchEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = 8B0E08AA2B7806CD00631736 /* GlobalSearchEnvironment.m */; };
 		8B7A9D072B77800400D6EADE /* SimpleSearchEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = 8B7A9D062B77800400D6EADE /* SimpleSearchEnvironment.m */; };
 		8B7A9D0A2B7787BF00D6EADE /* ConcurrentSearchEnvironment.m in Sources */ = {isa = PBXBuildFile; fileRef = 8B7A9D092B7787BF00D6EADE /* ConcurrentSearchEnvironment.m */; };
+		8BC592C52B782D2D0079F30C /* ModelInterface.m in Sources */ = {isa = PBXBuildFile; fileRef = 8BC592C42B782D2D0079F30C /* ModelInterface.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +65,8 @@
 		8B7A9D062B77800400D6EADE /* SimpleSearchEnvironment.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SimpleSearchEnvironment.m; sourceTree = "<group>"; };
 		8B7A9D082B7787BF00D6EADE /* ConcurrentSearchEnvironment.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ConcurrentSearchEnvironment.h; sourceTree = "<group>"; };
 		8B7A9D092B7787BF00D6EADE /* ConcurrentSearchEnvironment.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ConcurrentSearchEnvironment.m; sourceTree = "<group>"; };
+		8BC592C32B782D2D0079F30C /* ModelInterface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ModelInterface.h; sourceTree = "<group>"; };
+		8BC592C42B782D2D0079F30C /* ModelInterface.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ModelInterface.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -105,10 +108,7 @@
 		5A8549432B74001800EB7F74 /* Mark_III_WB_Search */ = {
 			isa = PBXGroup;
 			children = (
-				5A3898FA2B74029B00CA2AB4 /* FakeDataBase.h */,
-				5A3898F92B74029B00CA2AB4 /* FakeDataBase.mm */,
-				5A3898F62B7400A400CA2AB4 /* Event.h */,
-				5A3898F72B7400A400CA2AB4 /* Event.mm */,
+				8BC592C22B782BB80079F30C /* Model */,
 				5A8549442B74001800EB7F74 /* AppDelegate.h */,
 				5A8549452B74001800EB7F74 /* AppDelegate.mm */,
 				5A8549472B74001800EB7F74 /* SceneDelegate.h */,
@@ -139,6 +139,19 @@
 				8B0E08AA2B7806CD00631736 /* GlobalSearchEnvironment.m */,
 			);
 			path = Mark_III_WB_SearchTests;
+			sourceTree = "<group>";
+		};
+		8BC592C22B782BB80079F30C /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				5A3898FA2B74029B00CA2AB4 /* FakeDataBase.h */,
+				5A3898F92B74029B00CA2AB4 /* FakeDataBase.mm */,
+				5A3898F62B7400A400CA2AB4 /* Event.h */,
+				5A3898F72B7400A400CA2AB4 /* Event.mm */,
+				8BC592C32B782D2D0079F30C /* ModelInterface.h */,
+				8BC592C42B782D2D0079F30C /* ModelInterface.m */,
+			);
+			path = Model;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -247,6 +260,7 @@
 				8B04428E2B76DA1600EB948C /* ViewController+Utility.m in Sources */,
 				5A3898F82B7400A400CA2AB4 /* Event.mm in Sources */,
 				5A8549572B74001A00EB7F74 /* main.m in Sources */,
+				8BC592C52B782D2D0079F30C /* ModelInterface.m in Sources */,
 				5A8549492B74001800EB7F74 /* SceneDelegate.mm in Sources */,
 				5A3898FB2B74029B00CA2AB4 /* FakeDataBase.mm in Sources */,
 			);
