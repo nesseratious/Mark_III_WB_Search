@@ -10,30 +10,18 @@
 #import "ViewController.h"
 #import "ViewController+Utility.h"
 #import "FakeDataBase.h"
+#import "SimpleSearchEnvironment.h"
 
 @interface Mark_III_WB_SearchTests : XCTestCase
-@end
-
-@interface SimpleSearchEnvironment: NSObject<SearchEnvironment>
-@property (nonatomic, direct) dispatch_queue_t loadingQueue;
-@property (nonatomic, direct) NSArray<dispatch_queue_t>* processingQueues;
-@property (nonatomic, direct) NSUInteger currentProcessingQueue;
+@property (nonatomic, direct) NSData* bigEventsData;
 @end
 
 @implementation Mark_III_WB_SearchTests
 
+const NSUInteger duplicationCount = 200;
+const NSUInteger baseEventsCount = 10000;
+
 - (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
-}
-
-- (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
-}
-
-- (void)testPerformanceExample {
-    const NSUInteger duplicationCount = 200;
-    const NSUInteger baseEventsCount = 10000;
-
     NSDate* startDate = nil;
     NSDate* endDate = nil;
     [ViewController getStartRangeDate:&startDate endRangeDate:&endDate forDate:[NSDate new] minusYearsDelta:0 plusYearsDelta:10];
@@ -46,59 +34,39 @@
         memcpy(baseAddress + idx * baseEventsCount * sizeof(Event*), (void*)baseEvents, baseEventsCount * sizeof(Event*));
     }
 
+    self.bigEventsData = bigResult;
+}
+
+- (void)tearDown {
+    self.bigEventsData = nil;
+}
+
+- (void)testPerformanceSimple {
+    id<SearchEnvironment> environment = [SimpleSearchEnvironment new];
+    [self basePerformanceCheckingWithEnvironment:environment];
+}
+
+- (void)basePerformanceCheckingWithEnvironment:(id<SearchEnvironment>)environment {
+    const void* baseAddress = self.bigEventsData.bytes;
     NSString* sampleText = [((Event* __strong*)baseAddress)[0].title componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].firstObject;
-    SimpleSearchEnvironment* environment = [SimpleSearchEnvironment new];
 
     [self measureBlock:^{
+        __block NSInteger finalCount = 0;
         XCTestExpectation* expectation = [XCTestExpectation.alloc initWithDescription:@"Waiting"];
         [ViewController performSearchText:sampleText events:(Event* __strong*)baseAddress eventsCount:baseEventsCount * duplicationCount environment:environment completion:^(NSInteger count, BOOL finished, const void *partialBytes, NSUInteger length) {
             if (!finished)
                 return;
 
-            NSLog(@"Items count: %d", (int)count);
+            finalCount = count;
             [expectation fulfill];
         }];
 
         [self waitForExpectations:@[expectation]];
+        NSLog(@"Items count: %d", (int)finalCount);
+
+        XCTAssertNotEqual(finalCount, 0);
+        XCTAssertEqual(finalCount % duplicationCount, 0);
     }];
-}
-
-@end
-
-// MARK: -
-
-@implementation SimpleSearchEnvironment
-
-- (instancetype)init {
-    self = [super init];
-
-    if (nil == self)
-        return nil;
-
-    self.loadingQueue = dispatch_queue_create("com.mark_III_WB_SearchTests.loadingQueue", DISPATCH_QUEUE_SERIAL);
-
-    const NSUInteger queuesCount = NSProcessInfo.processInfo.processorCount / 2;
-
-    NSMutableArray* array = [NSMutableArray.alloc initWithCapacity:queuesCount];
-    const dispatch_queue_attr_t attributes = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1);
-    for (NSUInteger idx = 0; idx < queuesCount; idx++) {
-        [array addObject:dispatch_queue_create([NSString stringWithFormat:@"com.mark_III_WB_SearchTests.processingQueues%d", (int)idx].UTF8String, attributes)];
-    }
-    self.processingQueues = array;
-
-    return self;
-}
-
-@synthesize reportingQueue;
-
-- (dispatch_queue_t)reportingQueue {
-    return self.loadingQueue;
-}
-
-- (dispatch_queue_t)nextProcessingQueue {
-    dispatch_queue_t result = self.processingQueues[self.currentProcessingQueue % self.processingQueues.count];
-    self.currentProcessingQueue++;
-    return result;
 }
 
 @end

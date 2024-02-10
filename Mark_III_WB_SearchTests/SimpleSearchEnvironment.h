@@ -5,12 +5,8 @@
 //  Created by developer on 10.02.2024.
 //
 
-#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import "ViewController+Utility.h"
 
-NS_ASSUME_NONNULL_BEGIN
-
-@interface SimpleSearchEnvironment : NSViewController
-
+@interface SimpleSearchEnvironment: NSObject<SearchEnvironment>
 @end
-
-NS_ASSUME_NONNULL_END
