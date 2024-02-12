@@ -7,7 +7,7 @@
 
 #import <Foundation/NSObject.h>
 
-@class NSDate, NSString;
+@class NSDate, NSString, NSIndexSet;
 @class Event;
 @protocol ModelInterfaceDelegate;
 
@@ -24,9 +24,8 @@
 - (void)filterWithText:(NSString*)text;
 @end
 
-
 @protocol ModelInterfaceDelegate<NSObject>
-- (void)eventsListDidChange:(id<ModelInterface>)model;
+- (void)eventsListDidChange:(id<ModelInterface>)model inserted:(NSIndexSet*)inserted deleted:(NSIndexSet*)deleted;
 @end
 
 
@@ -36,4 +35,4 @@ extern const NSInteger initialEventsFetchingFutureYearsCount;
 
 
 // TODO: ability to recalculate indexes when fetching past events
-// TODO: initialize real class with defining date
+// TODO: initialize real class with defining date and next chunk fetching limit value
