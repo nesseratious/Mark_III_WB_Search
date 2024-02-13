@@ -6,83 +6,28 @@
 //
 
 #import "ViewController.h"
+#import "ViewController+Utility.h"
 #import "FakeDataBase.h"
 #import "Event.h"
 #import <list>
 
-static const NSInteger searchDeltaInYears = 10;
-static const NSInteger startMinusSearchDeltaInYears = 5;
-static const NSInteger startPlusSearchDeltaInYears = 5;
-
-@interface ViewController ()
-
+@interface ViewController () <SearchEnvironment>
 @property (nonatomic, direct) UITableView *tableView;
 @property (nonatomic, direct) UISearchBar *searchBar;
 @property (nonatomic, direct) Event * __strong * events;
 @property (nonatomic, direct) NSInteger eventCount;
 
-@property (nonatomic) dispatch_queue_t loadingQueue;
+@property (nonatomic, direct) NSMutableData* filteredIndexes;
+@property (nonatomic, direct) NSInteger filteredIndexesCount;
+@property (nonatomic, direct) NSInteger highlightEventIndex;
 
-@property (nonatomic) NSMutableData* filteredIndexes;
-@property (nonatomic) NSInteger filteredIndexesCount;
+@property (nonatomic, direct) NSArray<dispatch_queue_t>* processingQueues;
+@property (nonatomic, direct) NSUInteger currentProcessingQueue;
 
-@property (nonatomic) NSArray<dispatch_queue_t>* processingQueues;
-@property (nonatomic) NSUInteger threadsCount;
-
+@property (nonatomic, direct) NSString* latestSearchText;
 @end
 
 @implementation ViewController
-+ (void)getStartRangeDate:(NSDate**)start endRangeDate:(NSDate**)end forDate:(NSDate*)date minusYearsDelta:(NSInteger)minusYearsDelta plusYearsDelta:(NSInteger)plusYearsDelta {
-    NSCalendar* calendar = [NSCalendar currentCalendar];
-    NSDateComponents* components = [calendar components:NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay | NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond fromDate:date];
-
-    const NSInteger thisYear = [components valueForComponent:NSCalendarUnitYear];
-    components.calendar = calendar;
-
-    if (NULL != end) {
-        [components setValue:thisYear + plusYearsDelta - 1 forComponent:NSCalendarUnitYear];
-        [components setValue:12 forComponent:NSCalendarUnitMonth];
-        [components setValue:31 forComponent:NSCalendarUnitDay];
-        [components setValue:23 forComponent:NSCalendarUnitHour];
-        [components setValue:59 forComponent:NSCalendarUnitMinute];
-        [components setValue:59 forComponent:NSCalendarUnitSecond];
-
-        *end = components.date;
-    }
-
-    if (NULL != start) {
-        [components setValue:thisYear - minusYearsDelta forComponent:NSCalendarUnitYear];
-        [components setValue:1 forComponent:NSCalendarUnitMonth];
-        [components setValue:1 forComponent:NSCalendarUnitDay];
-        [components setValue:0 forComponent:NSCalendarUnitHour];
-        [components setValue:0 forComponent:NSCalendarUnitMinute];
-        [components setValue:0 forComponent:NSCalendarUnitSecond];
-
-        *start = components.date;
-    }
-}
-
-- (void)filterEventsInRange:(NSRange)range searchText:(NSString*)text resultIndexes:(NSMutableData*)resultIndexes {
-    if (0 == range.length) { return; }
-
-    [resultIndexes setLength:sizeof(NSInteger) * range.length];
-
-    NSUInteger index = 0;
-    NSInteger* indexesArray = (NSInteger*)resultIndexes.mutableBytes;
-
-    for (NSInteger idx = 0; idx < range.length; idx++) {
-        const NSInteger eventIdx = range.location + idx;
-
-        Event* event = self.events[eventIdx];
-        const NSRange substrRange = [event.title rangeOfString:text options:NSCaseInsensitiveSearch];
-        if (0 == substrRange.length) { continue; }
-
-        indexesArray[index] = eventIdx;
-        index++;
-    }
-
-    [resultIndexes setLength:sizeof(NSInteger) * index];
-}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -90,13 +35,15 @@ static const NSInteger startPlusSearchDeltaInYears = 5;
     // init like
     self.eventCount = 10000; // TODO: predefined - change to something more useful
     self.filteredIndexesCount = -1;
+    self.highlightEventIndex = -1;
 
-    self.loadingQueue = dispatch_queue_create("com.viewController.loadingQueue", DISPATCH_QUEUE_SERIAL);
-    self.threadsCount = NSProcessInfo.processInfo.processorCount / 2;
+    _reportingQueue = dispatch_queue_create("com.viewController.loadingQueue", DISPATCH_QUEUE_SERIAL);
 
-    NSMutableArray* array = [NSMutableArray.alloc initWithCapacity:self.threadsCount];
-    for (NSUInteger idx = 0; idx < self.threadsCount; idx++) {
-        [array addObject:dispatch_queue_create([NSString stringWithFormat:@"com.viewController.processingQueues.%d", (int)idx].UTF8String, DISPATCH_QUEUE_SERIAL)];
+    const NSUInteger threadsCount = NSProcessInfo.processInfo.processorCount / 2;
+    NSMutableArray* array = [NSMutableArray.alloc initWithCapacity:threadsCount];
+    const dispatch_queue_attr_t attributes = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, -1);
+    for (NSUInteger idx = 0; idx < threadsCount; idx++) {
+        [array addObject:dispatch_queue_create([NSString stringWithFormat:@"com.viewController.processingQueues.%d", (int)idx].UTF8String, attributes)];
     }
     self.processingQueues = array;
 
@@ -137,56 +84,67 @@ static const NSInteger startPlusSearchDeltaInYears = 5;
 }
 
 - (void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
-    [NSObject cancelPreviousPerformRequestsWithTarget:self];
-    [self performSelector:@selector(performSearchText:) withObject:searchText afterDelay:1.5];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(performSearchText:) object:self.latestSearchText];
+
+    self.latestSearchText = searchText;
+    [self performSelector:@selector(performSearchText:) withObject:self.latestSearchText afterDelay:1.5];
 }
 
 - (void)performSearchText:(NSString* )text {
-    if (text.length == 0) {
-        if (-1 != self.filteredIndexesCount) {
-            self.filteredIndexesCount = -1;
-            [self.tableView reloadData];
-        }
-        return;
-    }
-
-    const NSUInteger queuesCount = self.processingQueues.count;
-    const NSInteger width = self.eventCount / queuesCount;
-
-    dispatch_group_t group = dispatch_group_create();
-    NSMutableArray<NSData*>* result = [NSMutableArray.alloc initWithCapacity:queuesCount];
-
-    for (NSUInteger idx = 0; idx < queuesCount - 1; idx++) {
-        dispatch_group_enter(group);
-
-        NSMutableData* chunk = [NSMutableData new];
-        [result addObject:chunk];
-
-        dispatch_async(self.processingQueues[idx], ^{
-            [self filterEventsInRange:NSMakeRange(idx * width, width) searchText:text resultIndexes:chunk];
-            dispatch_group_leave(group);
-        });
-    }
-
-    dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
-
-    NSUInteger index = 0;
+    __block NSInteger startIndex = 0;
     NSInteger* indexesArray = (NSInteger*)self.filteredIndexes.mutableBytes;
 
-    for (NSInteger idx = 0; idx < result.count; idx++) {
-        NSData* subIndexes = [result objectAtIndex:idx];
-        const NSUInteger length = [subIndexes length];
+    self.highlightEventIndex = -1;
 
-        if (0 == length) { continue; }
+    __weak typeof(self) weakSelf = self;
+    [ViewController performSearchText:text definingDate:nil events:self.events eventsCount:self.eventCount environment:self completion:^(CompletionResult result) {
+        __strong typeof(self) strongSelf = weakSelf;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            switch (result.stage) {
+                case inProgress:
+                    memcpy(&indexesArray[startIndex], result.info.partial.bytes, result.info.partial.bytesSize);
+                    strongSelf.filteredIndexesCount = result.info.partial.count;
+                    startIndex = result.info.partial.count;
+                    break;
+                case completed:
+                    strongSelf.filteredIndexesCount = result.info.final.count;
+                    [strongSelf.tableView reloadData];
+                    NSLog(@"self.filteredIndexesCount = %d", (int)strongSelf.filteredIndexesCount);
 
-        memcpy(&indexesArray[index], subIndexes.bytes, length);
-        index += length / sizeof(NSInteger);
-    }
+                    if (-1 == strongSelf.filteredIndexesCount)
+                        break;
 
-    self.filteredIndexesCount = index;
-    [self.tableView reloadData];
+                    strongSelf.highlightEventIndex = result.info.final.nearestEventIndex;
 
-    NSLog(@"self.filteredIndexesCount = %d", (int)self.filteredIndexesCount);
+                    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(performEventHighlighting) object:nil];
+                    [self performSelectorOnMainThread:@selector(performEventHighlighting) withObject:nil waitUntilDone:NO modes:@[NSRunLoopCommonModes]];
+                    break;
+            }
+        });
+    }];
+}
+
+- (void)performEventHighlighting {
+    if (-1 == self.highlightEventIndex || self.highlightEventIndex >= self.filteredIndexesCount)
+        return;
+
+    [self.tableView deselectRowAtIndexPath:self.tableView.indexPathForSelectedRow animated:YES];
+    [self.tableView selectRowAtIndexPath:[NSIndexPath indexPathForRow:self.highlightEventIndex inSection:0] animated:YES scrollPosition:UITableViewScrollPositionMiddle];
+}
+
+// MARK: ### SearchEnvironment ###
+
+- (dispatch_queue_t)nextProcessingQueue {
+    auto result = self.processingQueues[self.currentProcessingQueue % self.processingQueues.count];
+    self.currentProcessingQueue++;
+    return result;
+}
+
+@synthesize reportingQueue = _reportingQueue;
+@synthesize processingItemsCount = _processingItemsCount;
+
+- (NSInteger)processingItemsCount {
+    return 2000;
 }
 
 @end
